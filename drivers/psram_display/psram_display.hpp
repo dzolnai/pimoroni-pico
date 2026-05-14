@@ -85,7 +85,7 @@ namespace pimoroni {
           printf("[%u] %s == %s ? %s\n", k, writeBuffer, readBuffer, bSame ? "Success" : "Failure");
         }
       }
-      
+      void write(uint32_t address, size_t len, const uint8_t* data);
       void write_pixel(const Point &p, uint8_t colour) override;
       void write_pixel_span(const Point &p, uint l, uint8_t colour) override;
       void read_pixel_span(const Point &p, uint l, uint8_t *data) override;
@@ -115,7 +115,6 @@ namespace pimoroni {
 
     private:
       void init();
-      void write(uint32_t address, size_t len, const uint8_t *data);
       void write(uint32_t address, size_t len, const uint8_t byte);
       void read(uint32_t address, size_t len, uint8_t *data);
 

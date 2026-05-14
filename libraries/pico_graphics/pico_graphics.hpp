@@ -299,7 +299,9 @@ namespace pimoroni {
     virtual void set_pixel(const Point &p) = 0;
     virtual void set_pixel_span(const Point &p, uint l) = 0;
     void set_thickness(uint t);
-
+    virtual void write_raw_block(const uint8_t *data, int memory_offset, int length) {
+	    // Default imp does nothing;
+    }
     void set_layer(uint l);
     uint get_layer();
 
@@ -597,6 +599,7 @@ namespace pimoroni {
 
   template<typename T> class IDirectDisplayDriver {
      public:
+       virtual void write(uint32_t address, size_t len, const uint8_t *data) = 0;
        virtual void write_pixel(const Point &p, T colour) = 0;
        virtual void write_pixel_span(const Point &p, uint l, T colour) = 0;
 
@@ -656,7 +659,7 @@ namespace pimoroni {
 
       void get_dither_candidates(const RGB &col, const RGB *palette, size_t len, std::array<uint8_t, 16> &candidates);
       void set_pixel_dither(const Point &p, const RGB &c) override;
-
+      void write_raw_block(const uint8_t *data, int memory_offset, int length) override;
       void frame_convert(PenType type, conversion_callback_func callback) override;
       static size_t buffer_size(uint w, uint h) {
         return w * h;

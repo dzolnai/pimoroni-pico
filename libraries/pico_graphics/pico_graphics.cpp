@@ -30,7 +30,7 @@ namespace pimoroni {
   void PicoGraphics::set_dimensions(int width, int height) {
     bounds = clip = {0, 0, width, height};
   }
-
+   
   void PicoGraphics::set_framebuffer(void *frame_buffer) {
     this->frame_buffer = frame_buffer;
   }

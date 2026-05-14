@@ -618,6 +618,85 @@ mp_obj_t ModPicoGraphics_set_font(mp_obj_t self_in, mp_obj_t font) {
     return mp_const_none;
 }
 
+mp_obj_t picographics_draw_raw_chunk(size_t n_args, const mp_obj_t *args) {
+    // args[0] = self
+    // args[1] = buffer
+    // args[2] = chunk_idx
+    // ARGS[3] = unpack_bytes (optional)
+    // args[4] = reoder_palette (optional)
+    ModPicoGraphics_obj_t *self = MP_OBJ_TO_PTR2(args[0], ModPicoGraphics_obj_t);
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(args[1], &bufinfo, MP_BUFFER_READ);
+
+    int chunk_idx = mp_obj_get_int(args[2]);
+
+    bool unpack_bytes = (n_args > 3) ? mp_obj_is_true(args[3]) : false;
+    bool reorder_palette = (n_args > 4) ? mp_obj_is_true(args[4]) : false;
+    
+
+    (void)reorder_palette;
+    int packed_chunk_size = bufinfo.len;
+    const uint8_t *src_8 = (const uint8_t *)bufinfo.buf;
+
+    uint8_t palette_map[8] = {0, 1, 6, 5, 3, 2, 4, 7};
+    if (unpack_bytes) {
+	int unpacked_chunk_size = packed_chunk_size * 2;
+	int base_memory_offset = chunk_idx * unpacked_chunk_size;
+	
+	const int PACKED_BYTES_PER_ROW = 400;
+	const int UNPACKED_BYTES_PER_ROW = 800;
+
+	const int ROWS_PER_BATCH = 8;
+	const int PACKED_BYTES_PER_BATCH = PACKED_BYTES_PER_ROW * ROWS_PER_BATCH;
+	const int UNPACKED_BYTES_PER_BATCH = UNPACKED_BYTES_PER_ROW * ROWS_PER_BATCH;
+	int total_rows = packed_chunk_size / PACKED_BYTES_PER_ROW;
+	int total_batches = total_rows / ROWS_PER_BATCH;
+
+	uint8_t unpacked_batch[UNPACKED_BYTES_PER_BATCH];
+
+	for (int b = 0; b < total_batches; b++) {
+	    int src_offset = b * PACKED_BYTES_PER_BATCH;
+	    for (int i = 0; i < PACKED_BYTES_PER_BATCH; i++) {
+	        uint8_t packed_byte = src_8[src_offset + i];
+
+		uint8_t left_pixel = packed_byte >> 4;
+		uint8_t right_pixel = packed_byte & 0x0F;
+		if (reorder_palette) {
+		    left_pixel = palette_map[left_pixel & 0x07];
+		    right_pixel = palette_map[right_pixel & 0x07];
+		}
+	        unpacked_batch[i * 2] = left_pixel;
+    	        unpacked_batch[(i * 2) + 1] = right_pixel;
+	    }
+	    int batch_memory_offset = base_memory_offset + (b * UNPACKED_BYTES_PER_BATCH);
+	    self->graphics->write_raw_block(unpacked_batch, batch_memory_offset, UNPACKED_BYTES_PER_BATCH);
+	}
+    } else {
+        int base_memory_offset = chunk_idx * packed_chunk_size;
+	if (reorder_palette) {
+            const int BYTES_PER_ROW = 800;
+	    const int ROWS_PER_BATCH = 8;
+	    const int BYTES_PER_BATCH = BYTES_PER_ROW * ROWS_PER_BATCH;
+	    
+	    int total_batches = packed_chunk_size / BYTES_PER_BATCH;
+	    uint8_t batch_buffer[BYTES_PER_BATCH];
+	    
+	    for (int b = 0; b < total_batches; b++) {
+		int src_offset = b * BYTES_PER_BATCH;
+	        for (int i = 0; i < BYTES_PER_BATCH; i++) {
+		    uint8_t pixel = src_8[src_offset + i];
+	            batch_buffer[i] = palette_map[pixel & 0x07];
+	        }
+                int batch_memory_offset = base_memory_offset + src_offset;
+                self->graphics->write_raw_block(batch_buffer, batch_memory_offset, BYTES_PER_BATCH);		
+	    }
+	} else {
+            self->graphics->write_raw_block((const uint8_t *)bufinfo.buf, base_memory_offset, packed_chunk_size);
+	}
+    }
+    return mp_const_none;
+}
+
 mp_int_t ModPicoGraphics_get_framebuffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo, mp_uint_t flags) {
     ModPicoGraphics_obj_t *self = MP_OBJ_TO_PTR2(self_in, ModPicoGraphics_obj_t);
     (void)flags;

@@ -24,6 +24,9 @@ namespace pimoroni {
       cache_built = false;
       return i;
   }
+  void PicoGraphics_PenInky7::write_raw_block(const uint8_t *data, int memory_offset, int length) {
+      driver.write(memory_offset, length, data);
+  }
   void PicoGraphics_PenInky7::set_pixel(const Point &p) {
     if ((color & 0x7f000000) == 0x7f000000) {
       set_pixel_dither(p, RGB(color));
